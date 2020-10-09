@@ -10,8 +10,12 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Produced;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class YellingApp {
+
+  private static final Logger logger = LoggerFactory.getLogger(YellingApp.class);
 
   public static void main(String... args) {
     // create Serde (both key & value will be Strings)
@@ -31,12 +35,14 @@ public class YellingApp {
     Runtime.getRuntime().addShutdownHook(new Thread("shutdown-hook") {
       @Override
       public void run() {
+        logger.info("Closing KafkaStreams client");
         streams.close();
         latch.countDown();
       }
     });
 
     // start Kafka Streams client
+    logger.info("Starting KafkaStreams client");
     streams.start();
 
     // wait for shutdown hook to be called
