@@ -7,6 +7,11 @@ import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Produced;
 
+/**
+ * Yelling Kafka Streams application
+ *
+ * As described in Kafka Streams in Action (https://www.manning.com/books/kafka-streams-in-action)
+ */
 public class YellingApp extends KafkaStreamsApplication {
 
   public YellingApp() {

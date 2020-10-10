@@ -7,6 +7,12 @@ repositories {
 }
 
 dependencies {
-    compile "ch.qos.logback:logback-classic:1.2.3"
-    compile "org.apache.kafka:kafka-streams:2.6.0"
+    // Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.14'
+    annotationProcessor 'org.projectlombok:lombok:1.18.14'
+
+    // compile dependencies
+    implementation "ch.qos.logback:logback-classic:1.2.3"
+    implementation "com.google.code.gson:gson:2.8.6"
+    implementation "org.apache.kafka:kafka-streams:2.6.0"
 }
