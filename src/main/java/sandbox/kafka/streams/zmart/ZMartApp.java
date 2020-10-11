@@ -10,6 +10,7 @@ import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
 import sandbox.kafka.streams.KafkaStreamsApplication;
 import sandbox.kafka.streams.serde.JsonSerde;
+import sandbox.kafka.streams.util.KafkaAdmin;
 
 /**
  * ZMart Kafka Streams application
@@ -53,6 +54,12 @@ public class ZMartApp extends KafkaStreamsApplication {
   }
 
   public static void main(String... args) {
+    // create input topic
+    KafkaAdmin admin = new KafkaAdmin("localhost:9092");
+    admin.createTopic("transactions", 1, 1);
+    admin.close();
+
+    // start app
     ZMartApp app = new ZMartApp();
     app.run();
   }

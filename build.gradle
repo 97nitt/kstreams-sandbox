@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'com.palantir.docker-compose' version '0.25.0'
 }
 
 repositories {
@@ -12,7 +13,12 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.14'
 
     // compile dependencies
-    implementation "ch.qos.logback:logback-classic:1.2.3"
-    implementation "com.google.code.gson:gson:2.8.6"
-    implementation "org.apache.kafka:kafka-streams:2.6.0"
+    implementation 'ch.qos.logback:logback-classic:1.2.3'
+    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation 'org.apache.kafka:kafka-streams:2.6.0'
+}
+
+task run(type: JavaExec, description: 'Run class provided by "main" property', dependsOn: dockerComposeUp) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = project.findProperty('main')
 }
