@@ -26,6 +26,7 @@ public class ZMartApp extends KafkaStreamsApplication {
   @Override
   protected Topology buildTopology() {
     // create serializers/deserializers
+    Serde<Long> longSerde = Serdes.Long();
     Serde<String> stringSerde = Serdes.String();
     Serde<Purchase> purchaseSerde = JsonSerde.of(Purchase.class);
     Serde<PurchasePattern> purchasePatternSerde = JsonSerde.of(PurchasePattern.class);
@@ -34,19 +35,23 @@ public class ZMartApp extends KafkaStreamsApplication {
     // topology builder
     StreamsBuilder builder = new StreamsBuilder();
 
-    // create stream of purchases, with masked credit card numbers
-    KStream<String, Purchase> purchases = builder.stream("transactions", Consumed.with(stringSerde, purchaseSerde))
+    // create stream of transactions, with masked credit card numbers
+    KStream<String, Purchase> transactions = builder.stream("transactions", Consumed.with(stringSerde, purchaseSerde))
         .mapValues(p -> Purchase.builder(p).maskCreditCard().build());
-    purchases.print(Printed.<String, Purchase>toSysOut().withLabel("purchases"));
-    purchases.to("purchases", Produced.with(stringSerde, purchaseSerde));
+
+    // create stream of filtered transactions, keyed by purchase date
+    KStream<Long, Purchase> purchases = transactions.filter((key, purchase) -> purchase.getPrice() > 5.00)
+        .selectKey((key, purchase) -> purchase.getPurchaseDate().getTime());
+    purchases.print(Printed.<Long, Purchase>toSysOut().withLabel("purchases"));
+    purchases.to("purchases", Produced.with(longSerde, purchaseSerde));
 
     // create stream of purchase patterns
-    KStream<String, PurchasePattern> patterns = purchases.mapValues(p -> PurchasePattern.builder(p).build());
+    KStream<String, PurchasePattern> patterns = transactions.mapValues(p -> PurchasePattern.builder(p).build());
     patterns.print(Printed.<String, PurchasePattern>toSysOut().withLabel("patterns"));
     patterns.to("patterns", Produced.with(stringSerde, purchasePatternSerde));
 
     // create stream of reward data
-    KStream<String, Rewards> rewards = purchases.mapValues(p -> Rewards.builder(p).build());
+    KStream<String, Rewards> rewards = transactions.mapValues(p -> Rewards.builder(p).build());
     rewards.print(Printed.<String, Rewards>toSysOut().withLabel("rewards"));
     rewards.to("rewards", Produced.with(stringSerde, rewardsSerde));
 
