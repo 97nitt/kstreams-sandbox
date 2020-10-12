@@ -8,6 +8,8 @@ import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import sandbox.kafka.streams.KafkaStreamsApplication;
 import sandbox.kafka.streams.serde.JsonSerde;
 import sandbox.kafka.streams.util.KafkaAdmin;
@@ -18,6 +20,8 @@ import sandbox.kafka.streams.util.KafkaAdmin;
  * As described in Kafka Streams in Action (https://www.manning.com/books/kafka-streams-in-action)
  */
 public class ZMartApp extends KafkaStreamsApplication {
+
+  private static final Logger logger = LoggerFactory.getLogger(ZMartApp.class);
 
   public ZMartApp() {
     super("ZMart");
@@ -65,6 +69,12 @@ public class ZMartApp extends KafkaStreamsApplication {
 
     transactionsByDept[1].print(Printed.<String, Purchase>toSysOut().withLabel("electronics"));
     transactionsByDept[1].to("electronics", Produced.with(stringSerde, purchaseSerde));
+
+    // create stream of transactions entered by a specific employee suspected of fraud (tsk tsk)
+    KStream<String, Purchase> suspectedFraudulentTransactions = transactions.filter((key, purchase) -> purchase.getEmployeeId().equals("123456"));
+    suspectedFraudulentTransactions.foreach((key, purchase) -> {
+      logger.info("Suspected fraudulent transaction. Don't put this in Kafka but save it off somewhere else... {}", purchase);
+    });
 
     return builder.build();
   }

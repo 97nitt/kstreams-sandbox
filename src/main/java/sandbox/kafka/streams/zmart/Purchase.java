@@ -18,6 +18,7 @@ public class Purchase {
   private String lastName;
   private String creditCardNumber;
   private String department;
+  private String employeeId;
   private String itemPurchased;
   private int quantity;
   private double price;
@@ -30,6 +31,7 @@ public class Purchase {
     this.lastName = builder.lastName;
     this.creditCardNumber = builder.creditCardNumber;
     this.department = builder.department;
+    this.employeeId = builder.employeeId;
     this.itemPurchased = builder.itemPurchased;
     this.quantity = builder.quantity;
     this.price = builder.price;
@@ -48,6 +50,7 @@ public class Purchase {
     builder.lastName = purchase.lastName;
     builder.creditCardNumber = purchase.creditCardNumber;
     builder.department = purchase.department;
+    builder.employeeId = purchase.employeeId;
     builder.itemPurchased = purchase.itemPurchased;
     builder.quantity = purchase.quantity;
     builder.price = purchase.price;
@@ -63,6 +66,7 @@ public class Purchase {
     private String lastName;
     private String creditCardNumber;
     private String department;
+    private String employeeId;
     private String itemPurchased;
     private int quantity;
     private double price;
@@ -94,6 +98,11 @@ public class Purchase {
 
     public Builder department(String department) {
       this.department = department;
+      return this;
+    }
+
+    public Builder employeeId(String employeeId) {
+      this.employeeId = employeeId;
       return this;
     }
 
