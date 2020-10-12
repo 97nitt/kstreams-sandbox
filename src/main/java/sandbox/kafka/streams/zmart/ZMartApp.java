@@ -55,6 +55,17 @@ public class ZMartApp extends KafkaStreamsApplication {
     rewards.print(Printed.<String, Rewards>toSysOut().withLabel("rewards"));
     rewards.to("rewards", Produced.with(stringSerde, rewardsSerde));
 
+    // create streams of coffee and electronics department transactions
+    KStream<String, Purchase>[] transactionsByDept = transactions.branch(
+        (key, purchase) -> purchase.getDepartment().equalsIgnoreCase("coffee"),
+        (key, purchase) -> purchase.getDepartment().equalsIgnoreCase("electronics"));
+
+    transactionsByDept[0].print(Printed.<String, Purchase>toSysOut().withLabel("coffee"));
+    transactionsByDept[0].to("coffee", Produced.with(stringSerde, purchaseSerde));
+
+    transactionsByDept[1].print(Printed.<String, Purchase>toSysOut().withLabel("electronics"));
+    transactionsByDept[1].to("electronics", Produced.with(stringSerde, purchaseSerde));
+
     return builder.build();
   }
 

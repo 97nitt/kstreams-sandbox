@@ -17,6 +17,7 @@ public class Purchase {
   private String firstName;
   private String lastName;
   private String creditCardNumber;
+  private String department;
   private String itemPurchased;
   private int quantity;
   private double price;
@@ -28,6 +29,7 @@ public class Purchase {
     this.firstName = builder.firstName;
     this.lastName = builder.lastName;
     this.creditCardNumber = builder.creditCardNumber;
+    this.department = builder.department;
     this.itemPurchased = builder.itemPurchased;
     this.quantity = builder.quantity;
     this.price = builder.price;
@@ -45,6 +47,7 @@ public class Purchase {
     builder.firstName = purchase.firstName;
     builder.lastName = purchase.lastName;
     builder.creditCardNumber = purchase.creditCardNumber;
+    builder.department = purchase.department;
     builder.itemPurchased = purchase.itemPurchased;
     builder.quantity = purchase.quantity;
     builder.price = purchase.price;
@@ -59,6 +62,7 @@ public class Purchase {
     private String firstName;
     private String lastName;
     private String creditCardNumber;
+    private String department;
     private String itemPurchased;
     private int quantity;
     private double price;
@@ -85,6 +89,11 @@ public class Purchase {
 
     public Builder creditCardNumber(String creditCardNumber) {
       this.creditCardNumber = creditCardNumber;
+      return this;
+    }
+
+    public Builder department(String department) {
+      this.department = department;
       return this;
     }
 
@@ -115,7 +124,6 @@ public class Purchase {
 
     public Builder maskCreditCard() {
       Objects.requireNonNull(this.creditCardNumber, "Credit Card can't be null");
-      String[] parts = this.creditCardNumber.split("-");
       String last4Digits = this.creditCardNumber.split("-")[3];
       this.creditCardNumber = "xxxx-xxxx-xxxx-" + last4Digits;
       return this;
