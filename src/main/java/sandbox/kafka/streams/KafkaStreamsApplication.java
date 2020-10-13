@@ -18,7 +18,6 @@ public abstract class KafkaStreamsApplication {
   private static final Logger logger = LoggerFactory.getLogger(KafkaStreamsApplication.class);
 
   private final String id;
-  private final KafkaStreams client;
 
   /**
    * Constructor.
@@ -27,13 +26,21 @@ public abstract class KafkaStreamsApplication {
    */
   public KafkaStreamsApplication(String id) {
     this.id = id;
-    this.client = new KafkaStreams(buildTopology(), getConfig());
   }
 
   /**
    * Run this Kafka Streams application.
    */
   public void run() {
+    // create KafkaStreams client
+    Topology topology = buildTopology();
+    logger.info("Creating KafkaStreams client with {}", topology.describe());
+
+    Properties config = getConfig();
+    logger.info("Creating KafkaStreams client with config: {}", config);
+
+    KafkaStreams client = new KafkaStreams(topology, config);
+
     // register a JVM shutdown hook that will close the KafkaStreams client
     CountDownLatch latch = new CountDownLatch(1);
     Runtime.getRuntime().addShutdownHook(new Thread("shutdown-hook") {

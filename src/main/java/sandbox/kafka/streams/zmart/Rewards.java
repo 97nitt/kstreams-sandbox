@@ -11,23 +11,29 @@ public class Rewards {
 
   private final String customerId;
   private final double purchaseTotal;
-  private final int rewardPoints;
+  private final int purchasePoints;
+  private final int totalPoints;
 
   private Rewards(Builder builder) {
     this.customerId = builder.customerId;
     this.purchaseTotal = builder.purchaseTotal;
-    this.rewardPoints = builder.rewardPoints;
+    this.purchasePoints = builder.purchasePoints;
+    this.totalPoints = builder.totalPoints;
   }
 
   public static Builder builder() {
     return new Builder();
   }
 
-  public static Builder builder(Purchase purchase) {
+  public static Builder builder(Purchase purchase, Integer currentPoints) {
     Builder builder = new Builder();
     builder.customerId = purchase.getCustomerId();
     builder.purchaseTotal = purchase.getPrice() * (double) purchase.getQuantity();
-    builder.rewardPoints = (int) builder.purchaseTotal;
+    builder.purchasePoints = (int) builder.purchaseTotal;
+    builder.totalPoints = builder.purchasePoints;
+    if (currentPoints != null) {
+      builder.totalPoints += currentPoints;
+    }
     return builder;
   }
 
@@ -35,7 +41,8 @@ public class Rewards {
 
     private String customerId;
     private double purchaseTotal;
-    private int rewardPoints;
+    private int purchasePoints;
+    private int totalPoints;
 
     private Builder() {
     }
@@ -50,8 +57,13 @@ public class Rewards {
       return this;
     }
 
-    public Builder rewardPoints(int rewardPoints) {
-      this.rewardPoints = rewardPoints;
+    public Builder purchasePoints(int purchasePoints) {
+      this.purchasePoints = purchasePoints;
+      return this;
+    }
+
+    public Builder totalPoints(int totalPoints) {
+      this.totalPoints = totalPoints;
       return this;
     }
 
