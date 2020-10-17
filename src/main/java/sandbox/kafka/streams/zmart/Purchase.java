@@ -4,26 +4,24 @@ import java.util.Date;
 import java.util.Objects;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.ToString;
 
 @Getter
-@Setter
 @EqualsAndHashCode
 @ToString
 public class Purchase {
 
-  private String customerId;
-  private String firstName;
-  private String lastName;
-  private String creditCardNumber;
-  private String department;
-  private String employeeId;
-  private String itemPurchased;
-  private int quantity;
-  private double price;
-  private Date purchaseDate;
-  private String zipCode;
+  private final String customerId;
+  private final String firstName;
+  private final String lastName;
+  private final String creditCardNumber;
+  private final String department;
+  private final String employeeId;
+  private final String itemPurchased;
+  private final int quantity;
+  private final double price;
+  private final Date purchaseTime;
+  private final String zipCode;
 
   private Purchase(Builder builder) {
     this.customerId = builder.customerId;
@@ -35,7 +33,7 @@ public class Purchase {
     this.itemPurchased = builder.itemPurchased;
     this.quantity = builder.quantity;
     this.price = builder.price;
-    this.purchaseDate = builder.purchaseDate;
+    this.purchaseTime = builder.purchaseTime;
     this.zipCode = builder.zipCode;
   }
 
@@ -54,7 +52,7 @@ public class Purchase {
     builder.itemPurchased = purchase.itemPurchased;
     builder.quantity = purchase.quantity;
     builder.price = purchase.price;
-    builder.purchaseDate = purchase.purchaseDate;
+    builder.purchaseTime = purchase.purchaseTime;
     builder.zipCode = purchase.zipCode;
     return builder;
   }
@@ -70,7 +68,7 @@ public class Purchase {
     private String itemPurchased;
     private int quantity;
     private double price;
-    private Date purchaseDate;
+    private Date purchaseTime;
     private String zipCode;
 
     private Builder() {
@@ -121,8 +119,8 @@ public class Purchase {
       return this;
     }
 
-    public Builder purchaseDate(Date purchaseDate) {
-      this.purchaseDate = purchaseDate;
+    public Builder purchaseTime(Date purchaseTime) {
+      this.purchaseTime = purchaseTime;
       return this;
     }
 

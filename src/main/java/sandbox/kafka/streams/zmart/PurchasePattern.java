@@ -30,7 +30,7 @@ public class PurchasePattern {
     Builder builder = new Builder();
     builder.zipCode = purchase.getZipCode();
     builder.item = purchase.getItemPurchased();
-    builder.date = purchase.getPurchaseDate();
+    builder.date = purchase.getPurchaseTime();
     builder.amount = purchase.getPrice();
     return builder;
   }
