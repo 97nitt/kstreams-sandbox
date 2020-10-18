@@ -76,7 +76,9 @@ public class ZMartApp extends KafkaStreamsApplication {
     // create stream of purchases, with masked credit card numbers
     KStream<String, Purchase> purchases = builder.stream(
         "transactions",
-        Consumed.with(stringSerde, purchaseSerde).withName("SourcePurchases"))
+        Consumed.with(stringSerde, purchaseSerde)
+            .withName("SourcePurchases")
+            .withTimestampExtractor(new PurchaseTimestampExtractor()))
         .mapValues(
             p -> Purchase.builder(p).maskCreditCard().build(),
             Named.as("MaskCreditCard"));
