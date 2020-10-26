@@ -6,6 +6,7 @@ import lombok.Data;
 @Data
 public class StockTransaction {
 
+  private String customerId;
   private String symbol;
   private String industry;
   private Date timestamp;

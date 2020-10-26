@@ -1,5 +1,6 @@
 package sandbox.kafka.streams.trading;
 
+import java.time.Duration;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
@@ -10,8 +11,12 @@ import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Named;
+import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.SessionWindows;
+import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
+import org.apache.kafka.streams.state.SessionBytesStoreSupplier;
 import org.apache.kafka.streams.state.Stores;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +29,10 @@ public class StockTradingApp extends KafkaStreamsApplication {
 
   private static final Logger logger = LoggerFactory.getLogger(StockTradingApp.class);
 
+  private final Serde<Long> longSerde = Serdes.Long();
   private final Serde<String> stringSerde = Serdes.String();
-  private final Serde<StockTransaction> stockTransactionSerde = JsonSerde.of(StockTransaction.class);
+  private final Serde<StockTransaction> transactionSerde = JsonSerde.of(StockTransaction.class);
+  private final Serde<StockTransactionKey> transactionKeySerde = JsonSerde.of(StockTransactionKey.class);
   private final Serde<ShareVolume> shareVolumeSerde = JsonSerde.of(ShareVolume.class);
   private final Serde<TopNList> topNListSerde = JsonSerde.of(TopNList.class);
 
@@ -40,10 +47,13 @@ public class StockTradingApp extends KafkaStreamsApplication {
     // create stream of stock transactions
     KStream<String, StockTransaction> transactions = builder.stream(
         "transactions",
-        Consumed.with(stringSerde, stockTransactionSerde).withName("SourceStockTransactions"));
+        Consumed.with(stringSerde, transactionSerde).withName("SourceStockTransactions"));
 
     // create KTable of accumulated share volumes
     top5ShareVolumes(transactions);
+
+    // create windowed KTable of transaction counts
+    windowedCounts(transactions);
 
     return builder.build();
   }
@@ -99,6 +109,32 @@ public class StockTradingApp extends KafkaStreamsApplication {
         .peek((industry, topN) -> logger.info("Top N List for industry {}: {}", industry, topN), Named.as("LogResult"))
         // write to output topic
         .to("topn-list", Produced.with(stringSerde, stringSerde).withName("TopNListSink"));
+  }
+
+  private void windowedCounts(KStream<String, StockTransaction> transactions) {
+    SessionBytesStoreSupplier storeSupplier = Stores.inMemorySessionStore(
+        "TransactionCountStore",
+        Duration.ofMinutes(15));
+
+    transactions
+        // key by transaction key (customer id + stock symbol)
+        .selectKey(
+            (key, transaction) -> StockTransactionKey.builder(transaction).build(),
+            Named.as("KeyByTransactionKey"))
+        // group by transaction key
+        .groupByKey(
+          Grouped.with(transactionKeySerde, transactionSerde)
+              .withName("GroupByTransactionKey"))
+        // use 20s session windows
+        .windowedBy(SessionWindows.with(Duration.ofSeconds(20)))
+        // aggregate counts
+        .count(Named.as("TransactionCount"), Materialized.<StockTransactionKey, Long>as(storeSupplier)
+            .withKeySerde(transactionKeySerde)
+            .withValueSerde(longSerde))
+        // convert windowed KTable to KStream
+        .toStream(Named.as("TransactionCountsToStream"))
+        // print results to console
+        .print(Printed.<Windowed<StockTransactionKey>, Long>toSysOut().withLabel("transaction-counts"));
   }
 
   public static void main(String... args) {
