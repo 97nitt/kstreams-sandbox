@@ -7,6 +7,7 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Grouped;
+import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Named;
 import org.apache.kafka.streams.kstream.Produced;
@@ -18,9 +19,15 @@ import sandbox.kafka.streams.KafkaStreamsApplication;
 import sandbox.kafka.streams.serde.JsonSerde;
 import sandbox.kafka.streams.util.KafkaAdmin;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class StockTradingApp extends KafkaStreamsApplication {
 
   private static final Logger logger = LoggerFactory.getLogger(StockTradingApp.class);
+
+  private final Serde<String> stringSerde = Serdes.String();
+  private final Serde<StockTransaction> stockTransactionSerde = JsonSerde.of(StockTransaction.class);
+  private final Serde<ShareVolume> shareVolumeSerde = JsonSerde.of(ShareVolume.class);
+  private final Serde<TopNList> topNListSerde = JsonSerde.of(TopNList.class);
 
   public StockTradingApp() {
     super("StockTradingApp");
@@ -30,12 +37,18 @@ public class StockTradingApp extends KafkaStreamsApplication {
   protected Topology buildTopology() {
     StreamsBuilder builder = new StreamsBuilder();
 
-    // serdes
-    Serde<String> stringSerde = Serdes.String();
-    Serde<StockTransaction> stockTransactionSerde = JsonSerde.of(StockTransaction.class);
-    Serde<ShareVolume> shareVolumeSerde = JsonSerde.of(ShareVolume.class);
-    Serde<TopNList> topNListSerde = JsonSerde.of(TopNList.class);
+    // create stream of stock transactions
+    KStream<String, StockTransaction> transactions = builder.stream(
+        "transactions",
+        Consumed.with(stringSerde, stockTransactionSerde).withName("SourceStockTransactions"));
 
+    // create KTable of accumulated share volumes
+    top5ShareVolumes(transactions);
+
+    return builder.build();
+  }
+
+  private void top5ShareVolumes(KStream<String, StockTransaction> transactions) {
     // state stores
     String volumeStoreName = "ShareVolumeStore";
     KeyValueBytesStoreSupplier volumeStoreSupplier = Stores.inMemoryKeyValueStore(volumeStoreName);
@@ -43,11 +56,8 @@ public class StockTradingApp extends KafkaStreamsApplication {
     String topNStoreName = "TopNStore";
     KeyValueBytesStoreSupplier topNStoreSupplier = Stores.inMemoryKeyValueStore(topNStoreName);
 
-    // create KTable of accumulated share volumes
-    builder.stream(
-        "transactions",
-        Consumed.with(stringSerde, stockTransactionSerde)
-            .withName("SourceStockTransactions"))
+    // build out topology
+    transactions
         // key by stock symbol
         .selectKey(
             (key, shareVolume) -> shareVolume.getSymbol(),
@@ -89,8 +99,6 @@ public class StockTradingApp extends KafkaStreamsApplication {
         .peek((industry, topN) -> logger.info("Top N List for industry {}: {}", industry, topN), Named.as("LogResult"))
         // write to output topic
         .to("topn-list", Produced.with(stringSerde, stringSerde).withName("TopNListSink"));
-
-    return builder.build();
   }
 
   public static void main(String... args) {
