@@ -8,16 +8,19 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Grouped;
+import org.apache.kafka.streams.kstream.KGroupedStream;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Named;
 import org.apache.kafka.streams.kstream.Printed;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.SessionWindows;
+import org.apache.kafka.streams.kstream.TimeWindows;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.state.KeyValueBytesStoreSupplier;
 import org.apache.kafka.streams.state.SessionBytesStoreSupplier;
 import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.state.WindowBytesStoreSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sandbox.kafka.streams.KafkaStreamsApplication;
@@ -106,35 +109,90 @@ public class StockTradingApp extends KafkaStreamsApplication {
         // convert KTable to KStream
         .toStream(Named.as("ConvertToStream"))
         // log each result
-        .peek((industry, topN) -> logger.info("Top N List for industry {}: {}", industry, topN), Named.as("LogResult"))
+        //.peek((industry, topN) -> logger.info("Top N List for industry {}: {}", industry, topN), Named.as("LogResult"))
         // write to output topic
         .to("topn-list", Produced.with(stringSerde, stringSerde).withName("TopNListSink"));
   }
 
   private void windowedCounts(KStream<String, StockTransaction> transactions) {
-    SessionBytesStoreSupplier storeSupplier = Stores.inMemorySessionStore(
-        "TransactionCountStore",
-        Duration.ofMinutes(15));
-
-    transactions
-        // key by transaction key (customer id + stock symbol)
+    // group transactions by key (customer id + stock symbol)
+    KGroupedStream<StockTransactionKey, StockTransaction> transactionsByKey = transactions
+        // key by transaction key
         .selectKey(
             (key, transaction) -> StockTransactionKey.builder(transaction).build(),
             Named.as("KeyByTransactionKey"))
         // group by transaction key
         .groupByKey(
           Grouped.with(transactionKeySerde, transactionSerde)
-              .withName("GroupByTransactionKey"))
+              .withName("GroupByTransactionKey"));
+
+    // aggregate transaction counts using session windows
+    sessionWindowedCounts(transactionsByKey);
+
+    // aggregate transaction counts using tumbling windows
+    tumblingWindowedCounts(transactionsByKey);
+
+    // aggregate transaction counts using hopping windows
+    hoppingWindowedCounts(transactionsByKey);
+  }
+
+  private void sessionWindowedCounts(KGroupedStream<StockTransactionKey, StockTransaction> transactionsByKey) {
+    // session window state store
+    SessionBytesStoreSupplier storeSupplier = Stores.inMemorySessionStore(
+        "SessionWindowTransactionCountStore",
+        Duration.ofMinutes(15));
+
+    transactionsByKey
         // use 20s session windows
         .windowedBy(SessionWindows.with(Duration.ofSeconds(20)))
         // aggregate counts
-        .count(Named.as("TransactionCount"), Materialized.<StockTransactionKey, Long>as(storeSupplier)
+        .count(Named.as("SessionWindowTransactionCount"), Materialized.<StockTransactionKey, Long>as(storeSupplier)
             .withKeySerde(transactionKeySerde)
             .withValueSerde(longSerde))
-        // convert windowed KTable to KStream
-        .toStream(Named.as("TransactionCountsToStream"))
+        // convert KTable to KStream
+        .toStream(Named.as("SessionWindowTransactionCountsToStream"))
         // print results to console
-        .print(Printed.<Windowed<StockTransactionKey>, Long>toSysOut().withLabel("transaction-counts"));
+        .print(Printed.<Windowed<StockTransactionKey>, Long>toSysOut().withLabel("transaction-counts (session window)"));
+  }
+
+  private void tumblingWindowedCounts(KGroupedStream<StockTransactionKey, StockTransaction> transactionsByKey) {
+    WindowBytesStoreSupplier storeSupplier = Stores.inMemoryWindowStore(
+        "TumblingWindowTransactionCountStore",
+        Duration.ofSeconds(60),   // retention = window size
+        Duration.ofSeconds(60),   // window size
+        false);
+
+    transactionsByKey
+        // use 60s tumbling windows
+        .windowedBy(TimeWindows.of(Duration.ofSeconds(60)))
+        // aggregate counts
+        .count(Named.as("TumblingWindowTransactionCount"), Materialized.<StockTransactionKey, Long>as(storeSupplier)
+            .withKeySerde(transactionKeySerde)
+            .withValueSerde(longSerde))
+        // convert KTable to KStream
+        .toStream(Named.as("TumblingWindowTransactionCountToStream"))
+        // print results to console
+        .print(Printed.<Windowed<StockTransactionKey>, Long>toSysOut().withLabel("transaction-counts (tumbling window)"));
+  }
+
+  private void hoppingWindowedCounts(KGroupedStream<StockTransactionKey, StockTransaction> transactionsByKey) {
+    WindowBytesStoreSupplier storeSupplier = Stores.inMemoryWindowStore(
+        "HoppingWindowTransactionCountStore",
+        Duration.ofSeconds(60),   // retention = window size
+        Duration.ofSeconds(60),   // window size
+        false);
+
+    transactionsByKey
+        // use 60s hopping windows every 10s
+        .windowedBy(TimeWindows.of(Duration.ofSeconds(60)).advanceBy(Duration.ofSeconds(10)))
+        // aggregate counts
+        .count(Named.as("HoppingWindowTransactionCount"), Materialized.<StockTransactionKey, Long>as(storeSupplier)
+            .withKeySerde(transactionKeySerde)
+            .withValueSerde(longSerde))
+        // convert KTable to KStream
+        .toStream(Named.as("HoppingWindowTransactionCountToStream"))
+        // print results to console
+        .print(Printed.<Windowed<StockTransactionKey>, Long>toSysOut().withLabel("transaction-counts (hopping window)"));
   }
 
   public static void main(String... args) {
